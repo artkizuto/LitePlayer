@@ -21,6 +21,9 @@ class MainWindow(QWidget):
         # =========================
         self.player = AudioPlayer()
 
+        # Lưu tên playlist -> đường dẫn
+        self.playlists = {}
+
         # =========================
         # Window
         # =========================
@@ -42,7 +45,9 @@ class MainWindow(QWidget):
         # Widgets
         # =========================
         self.add_playlist_btn = QPushButton("➕ Add Playlist")
+
         self.playlist_list = QListWidget()
+        self.song_list = QListWidget()
 
         self.play_btn = QPushButton("▶ Play")
         self.pause_btn = QPushButton("⏸ Pause")
@@ -51,6 +56,9 @@ class MainWindow(QWidget):
         # Signals
         # =========================
         self.add_playlist_btn.clicked.connect(self.add_playlist)
+
+        self.playlist_list.itemClicked.connect(self.load_playlist)
+
         self.play_btn.clicked.connect(self.player.play)
         self.pause_btn.clicked.connect(self.player.pause)
 
@@ -63,6 +71,9 @@ class MainWindow(QWidget):
 
         layout.addWidget(QLabel("Playlists"))
         layout.addWidget(self.playlist_list)
+
+        layout.addWidget(QLabel("Songs"))
+        layout.addWidget(self.song_list)
 
         layout.addStretch()
 
@@ -82,4 +93,21 @@ class MainWindow(QWidget):
 
         playlist_name = os.path.basename(folder)
 
+        # Không thêm trùng playlist
+        if playlist_name in self.playlists:
+            return
+
+        self.playlists[playlist_name] = folder
+
         self.playlist_list.addItem(playlist_name)
+
+    def load_playlist(self, item):
+        self.song_list.clear()
+
+        playlist_name = item.text()
+
+        folder = self.playlists[playlist_name]
+
+        for file_name in sorted(os.listdir(folder)):
+            if file_name.lower().endswith((".mp3", ".wav", ".flac")):
+                self.song_list.addItem(file_name)
