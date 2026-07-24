@@ -1,5 +1,8 @@
 import os
 
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QMouseEvent
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -8,6 +11,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QFileDialog,
     QListWidget,
+    QProgressBar,
+    QSlider,
 )
 
 from player import AudioPlayer
@@ -52,6 +57,18 @@ class MainWindow(QWidget):
         self.song_list = QListWidget()
 
         self.now_playing = QLabel("Now Playing: Nothing")
+
+        self.progress = QSlider(Qt.Horizontal)
+        self.progress.setRange(0, 1000)
+
+        self.current_time = QLabel("00:00")
+        self.total_time = QLabel("00:00")
+
+        time_layout = QHBoxLayout()
+        time_layout.addWidget(self.current_time)
+        time_layout.addStretch()
+        time_layout.addWidget(self.total_time)
+
         self.now_playing.setStyleSheet("font-weight:bold;")
 
         self.play_btn = QPushButton("▶ Play")
@@ -68,6 +85,10 @@ class MainWindow(QWidget):
 
         self.play_btn.clicked.connect(self.player.play)
         self.pause_btn.clicked.connect(self.player.pause)
+
+        self.progress.sliderMoved.connect(self.seek)
+        self.progress.sliderPressed.connect(self.pause_timer)
+        self.progress.sliderReleased.connect(self.resume_timer)
 
         # =========================
         # Layout
@@ -99,6 +120,9 @@ class MainWindow(QWidget):
 
         right_layout.addWidget(self.now_playing)
 
+        right_layout.addWidget(self.progress)
+        right_layout.addLayout(time_layout)
+
         right_layout.addWidget(self.play_btn)
         right_layout.addWidget(self.pause_btn)
 
@@ -110,6 +134,12 @@ class MainWindow(QWidget):
         main_layout.addLayout(center_layout)
 
         self.setLayout(main_layout)
+
+        self.timer = QTimer()
+
+        self.timer.timeout.connect(self.update_progress)
+
+        self.timer.start(200)
 
     def add_playlist(self):
         folder = QFileDialog.getExistingDirectory(
@@ -155,3 +185,45 @@ class MainWindow(QWidget):
         self.player.play()
 
         self.now_playing.setText(f"Now Playing: {file_name}")
+
+    def format_time(self, ms):
+        seconds = ms // 1000
+
+        minutes = seconds // 60
+
+        seconds %= 60
+
+        return f"{minutes:02}:{seconds:02}"
+
+    def update_progress(self):
+        duration = self.player.duration()
+
+        if duration <= 0:
+            return
+
+        position = self.player.position()
+
+        value = int(position / duration * 1000)
+
+        if not self.progress.isSliderDown():
+            self.progress.setValue(value)
+
+        self.current_time.setText(self.format_time(position))
+
+        self.total_time.setText(self.format_time(duration))
+
+    def seek(self, value):
+        duration = self.player.duration()
+
+        if duration <= 0:
+            return
+
+        position = duration * value // 1000
+
+        self.player.set_position(position)
+
+    def pause_timer(self):
+        self.timer.stop()
+
+    def resume_timer(self):
+        self.timer.start(200)

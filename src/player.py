@@ -26,3 +26,12 @@ class AudioPlayer:
 
     def stop(self):
         self.player.stop()
+
+    def duration(self):
+        return self.player.duration()
+
+    def position(self):
+        return self.player.position()
+
+    def set_position(self, position):
+        self.player.setPosition(position)
