@@ -1,7 +1,9 @@
 import os
+import random
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QMouseEvent
+from PySide6.QtMultimedia import QMediaPlayer
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -33,6 +35,9 @@ class MainWindow(QWidget):
         # Playlist Engine
         self.current_playlist = []
         self.current_index = -1
+
+        self.shuffle = False
+        self.loop = False
 
         # =========================
         # Window
@@ -72,8 +77,12 @@ class MainWindow(QWidget):
 
         self.now_playing.setStyleSheet("font-weight:bold;")
 
-        self.play_btn = QPushButton("▶ Play")
-        self.pause_btn = QPushButton("⏸ Pause")
+        self.previous_btn = QPushButton("⏮")
+        self.play_btn = QPushButton("▶")
+        self.pause_btn = QPushButton("⏸")
+        self.next_btn = QPushButton("⏭")
+        self.shuffle_btn = QPushButton("🔀")
+        self.loop_btn = QPushButton("🔁")
 
         # =========================
         # Signals
@@ -86,6 +95,15 @@ class MainWindow(QWidget):
 
         self.play_btn.clicked.connect(self.player.play)
         self.pause_btn.clicked.connect(self.player.pause)
+
+        self.previous_btn.clicked.connect(self.play_previous)
+        self.next_btn.clicked.connect(self.play_next)
+        self.shuffle_btn.clicked.connect(self.toggle_shuffle)
+        self.loop_btn.clicked.connect(self.toggle_loop)
+
+        self.player.player.mediaStatusChanged.connect(
+            self.media_status_changed
+        )
 
         self.progress.sliderMoved.connect(self.seek)
         self.progress.sliderPressed.connect(self.pause_timer)
@@ -124,8 +142,15 @@ class MainWindow(QWidget):
         right_layout.addWidget(self.progress)
         right_layout.addLayout(time_layout)
 
-        right_layout.addWidget(self.play_btn)
-        right_layout.addWidget(self.pause_btn)
+        controls = QHBoxLayout()
+        controls.addWidget(self.previous_btn)
+        controls.addWidget(self.play_btn)
+        controls.addWidget(self.pause_btn)
+        controls.addWidget(self.next_btn)
+        controls.addWidget(self.shuffle_btn)
+        controls.addWidget(self.loop_btn)
+
+        right_layout.addLayout(controls)
 
         center_layout.addLayout(left_layout, 1)
         center_layout.addLayout(right_layout, 2)
@@ -202,7 +227,13 @@ class MainWindow(QWidget):
         if not self.current_playlist:
             return
 
-        self.current_index += 1
+        if self.shuffle:
+            self.current_index = random.randint(
+                0,
+                len(self.current_playlist) - 1
+            )
+        else:
+            self.current_index += 1
 
         if self.current_index >= len(self.current_playlist):
             self.current_index = 0
@@ -226,6 +257,53 @@ class MainWindow(QWidget):
 
         if self.current_index < 0:
             self.current_index = len(self.current_playlist) - 1
+
+        song = self.current_playlist[self.current_index]
+
+        self.player.load(song["path"])
+        self.player.play()
+
+        self.song_list.setCurrentRow(self.current_index)
+
+        self.now_playing.setText(
+            f"Now Playing: {song['title']}"
+        )
+
+    def toggle_shuffle(self):
+        self.shuffle = not self.shuffle
+
+        if self.shuffle:
+            self.shuffle_btn.setStyleSheet("background:#66ccff;")
+        else:
+            self.shuffle_btn.setStyleSheet("")
+
+    def toggle_loop(self):
+        self.loop = not self.loop
+
+        if self.loop:
+            self.loop_btn.setStyleSheet("background:#66cc66;")
+        else:
+            self.loop_btn.setStyleSheet("")
+
+    def media_status_changed(self, status):
+        if status != QMediaPlayer.EndOfMedia:
+            return
+
+        if self.shuffle:
+            self.current_index = random.randint(
+                0,
+                len(self.current_playlist) - 1
+            )
+
+        else:
+            self.current_index += 1
+
+        if self.current_index >= len(self.current_playlist):
+
+            if self.loop:
+                self.current_index = 0
+            else:
+                return
 
         song = self.current_playlist[self.current_index]
 
