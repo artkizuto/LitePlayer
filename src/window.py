@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from player import AudioPlayer
+from settings import load_settings, save_settings
 
 
 class MainWindow(QWidget):
@@ -36,8 +37,10 @@ class MainWindow(QWidget):
         self.current_playlist = []
         self.current_index = -1
 
-        self.shuffle = False
-        self.loop = False
+        # Load Settings
+        self.settings = load_settings()
+        self.shuffle = self.settings.get("shuffle", False)
+        self.loop = self.settings.get("loop", False)
 
         # =========================
         # Window
@@ -84,6 +87,20 @@ class MainWindow(QWidget):
         self.shuffle_btn = QPushButton("🔀")
         self.loop_btn = QPushButton("🔁")
 
+        self.volume = QSlider(Qt.Horizontal)
+        self.volume.setRange(0, 100)
+        self.volume.setValue(self.settings.get("volume", 50))
+
+        # Set initial button styles based on settings
+        if self.shuffle:
+            self.shuffle_btn.setStyleSheet("background:#66ccff;")
+        if self.loop:
+            self.loop_btn.setStyleSheet("background:#66cc66;")
+
+        # Set initial audio volume
+        if hasattr(self.player, "audio_output"):
+            self.player.audio_output.setVolume(self.volume.value() / 100)
+
         # =========================
         # Signals
         # =========================
@@ -108,6 +125,8 @@ class MainWindow(QWidget):
         self.progress.sliderMoved.connect(self.seek)
         self.progress.sliderPressed.connect(self.pause_timer)
         self.progress.sliderReleased.connect(self.resume_timer)
+
+        self.volume.valueChanged.connect(self.on_volume_changed)
 
         # =========================
         # Layout
@@ -152,6 +171,9 @@ class MainWindow(QWidget):
 
         right_layout.addLayout(controls)
 
+        right_layout.addWidget(QLabel("Volume"))
+        right_layout.addWidget(self.volume)
+
         center_layout.addLayout(left_layout, 1)
         center_layout.addLayout(right_layout, 2)
 
@@ -166,6 +188,30 @@ class MainWindow(QWidget):
         self.timer.timeout.connect(self.update_progress)
 
         self.timer.start(200)
+
+        # Restore saved playlists
+        self.restore_playlists()
+
+    def restore_playlists(self):
+        saved_folders = self.settings.get("playlists", [])
+        for folder in saved_folders:
+            if os.path.exists(folder):
+                playlist_name = os.path.basename(folder)
+                if playlist_name not in self.playlists:
+                    self.playlists[playlist_name] = folder
+                    self.playlist_list.addItem(playlist_name)
+
+    def persist_settings(self):
+        self.settings["volume"] = self.volume.value()
+        self.settings["shuffle"] = self.shuffle
+        self.settings["loop"] = self.loop
+        self.settings["playlists"] = list(self.playlists.values())
+        save_settings(self.settings)
+
+    def on_volume_changed(self, value):
+        if hasattr(self.player, "audio_output"):
+            self.player.audio_output.setVolume(value / 100)
+        self.persist_settings()
 
     def add_playlist(self):
         folder = QFileDialog.getExistingDirectory(
@@ -184,6 +230,8 @@ class MainWindow(QWidget):
         self.playlists[playlist_name] = folder
 
         self.playlist_list.addItem(playlist_name)
+
+        self.persist_settings()
 
     def load_playlist(self, item):
         self.song_list.clear()
@@ -206,25 +254,42 @@ class MainWindow(QWidget):
 
                 self.song_list.addItem(file_name)
 
+    def play_current(self):
+        if not self.current_playlist:
+            return
+
+        song = self.current_playlist[self.current_index]
+
+        self.player.load(song["path"])
+        
+        # Áp dụng loop cho player nếu hàm set_loop có trong player
+        if hasattr(self.player, "set_loop"):
+            self.player.set_loop(self.loop)
+
+        self.player.play()
+
+        self.song_list.setCurrentRow(self.current_index)
+
+        self.now_playing.setText(
+            f"Now Playing: {song['title']}"
+        )
+
     def play_song(self, item):
         title = item.text()
 
         for index, song in enumerate(self.current_playlist):
             if song["title"] == title:
-
                 self.current_index = index
-
-                self.player.load(song["path"])
-                self.player.play()
-
-                self.now_playing.setText(
-                    f"Now Playing: {song['title']}"
-                )
-
+                self.play_current()
                 break
 
-    def play_next(self):
+    def play_next(self, is_auto=False):
         if not self.current_playlist:
+            return
+
+        # Nếu tự động hết bài + đang bật Loop -> Phát lại đúng bài đó
+        if is_auto and self.loop:
+            self.play_current()
             return
 
         if self.shuffle:
@@ -235,20 +300,15 @@ class MainWindow(QWidget):
         else:
             self.current_index += 1
 
-        if self.current_index >= len(self.current_playlist):
-            self.current_index = 0
+            if self.current_index >= len(self.current_playlist):
+                if self.loop:
+                    self.current_index = 0
+                else:
+                    self.current_index = len(self.current_playlist) - 1
+                    return
 
-        song = self.current_playlist[self.current_index]
-
-        self.player.load(song["path"])
-        self.player.play()
-
-        self.song_list.setCurrentRow(self.current_index)
-
-        self.now_playing.setText(
-            f"Now Playing: {song['title']}"
-        )
-
+        self.play_current()
+        
     def play_previous(self):
         if not self.current_playlist:
             return
@@ -256,18 +316,14 @@ class MainWindow(QWidget):
         self.current_index -= 1
 
         if self.current_index < 0:
-            self.current_index = len(self.current_playlist) - 1
 
-        song = self.current_playlist[self.current_index]
+            if self.loop:
+                self.current_index = len(self.current_playlist) - 1
+            else:
+                self.current_index = 0
+                return
 
-        self.player.load(song["path"])
-        self.player.play()
-
-        self.song_list.setCurrentRow(self.current_index)
-
-        self.now_playing.setText(
-            f"Now Playing: {song['title']}"
-        )
+        self.play_current()
 
     def toggle_shuffle(self):
         self.shuffle = not self.shuffle
@@ -277,6 +333,8 @@ class MainWindow(QWidget):
         else:
             self.shuffle_btn.setStyleSheet("")
 
+        self.persist_settings()
+
     def toggle_loop(self):
         self.loop = not self.loop
 
@@ -285,36 +343,17 @@ class MainWindow(QWidget):
         else:
             self.loop_btn.setStyleSheet("")
 
+        # Cập nhật loop vào player
+        if hasattr(self.player, "set_loop"):
+            self.player.set_loop(self.loop)
+
+        self.persist_settings()
+
     def media_status_changed(self, status):
-        if status != QMediaPlayer.EndOfMedia:
-            return
+        from PySide6.QtMultimedia import QMediaPlayer
 
-        if self.shuffle:
-            self.current_index = random.randint(
-                0,
-                len(self.current_playlist) - 1
-            )
-
-        else:
-            self.current_index += 1
-
-        if self.current_index >= len(self.current_playlist):
-
-            if self.loop:
-                self.current_index = 0
-            else:
-                return
-
-        song = self.current_playlist[self.current_index]
-
-        self.player.load(song["path"])
-        self.player.play()
-
-        self.song_list.setCurrentRow(self.current_index)
-
-        self.now_playing.setText(
-            f"Now Playing: {song['title']}"
-        )
+        if status == QMediaPlayer.EndOfMedia:
+            self.play_next(is_auto=True)
 
     def format_time(self, ms):
         seconds = ms // 1000

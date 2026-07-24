@@ -35,3 +35,10 @@ class AudioPlayer:
 
     def set_position(self, position):
         self.player.setPosition(position)
+
+    def set_loop(self, loop: bool):
+    # -1 là Loop vô tận bài hiện tại, 1 là chạy 1 lần rồi dừng
+        if loop:
+            self.player.setLoops(-1)
+        else:
+            self.player.setLoops(1)
