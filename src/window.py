@@ -1,9 +1,12 @@
+import os
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QPushButton,
     QLabel,
     QFileDialog,
+    QListWidget,
 )
 
 from player import AudioPlayer
@@ -13,42 +16,70 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        # =========================
+        # Player
+        # =========================
         self.player = AudioPlayer()
 
+        # =========================
+        # Window
+        # =========================
         self.setWindowTitle("LitePlayer")
         self.resize(420, 600)
 
         layout = QVBoxLayout()
 
+        # =========================
+        # Title
+        # =========================
         title = QLabel("🎵 LitePlayer")
         title.setStyleSheet("""
-            font-size:24px;
-            font-weight:bold;
+            font-size: 24px;
+            font-weight: bold;
         """)
 
-        self.open_btn = QPushButton("Open MP3")
+        # =========================
+        # Widgets
+        # =========================
+        self.add_playlist_btn = QPushButton("➕ Add Playlist")
+        self.playlist_list = QListWidget()
+
         self.play_btn = QPushButton("▶ Play")
         self.pause_btn = QPushButton("⏸ Pause")
 
-        self.open_btn.clicked.connect(self.open_file)
+        # =========================
+        # Signals
+        # =========================
+        self.add_playlist_btn.clicked.connect(self.add_playlist)
         self.play_btn.clicked.connect(self.player.play)
         self.pause_btn.clicked.connect(self.player.pause)
 
+        # =========================
+        # Layout
+        # =========================
         layout.addWidget(title)
-        layout.addWidget(self.open_btn)
+
+        layout.addWidget(self.add_playlist_btn)
+
+        layout.addWidget(QLabel("Playlists"))
+        layout.addWidget(self.playlist_list)
+
         layout.addStretch()
+
         layout.addWidget(self.play_btn)
         layout.addWidget(self.pause_btn)
 
         self.setLayout(layout)
 
-    def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(
+    def add_playlist(self):
+        folder = QFileDialog.getExistingDirectory(
             self,
-            "Open MP3",
-            "",
-            "Music Files (*.mp3 *.wav *.flac)"
+            "Select Playlist Folder"
         )
 
-        if file_path:
-            self.player.load(file_path)
+        if not folder:
+            return
+
+        playlist_name = os.path.basename(folder)
+
+        self.playlist_list.addItem(playlist_name)
