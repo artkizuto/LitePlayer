@@ -30,8 +30,9 @@ class MainWindow(QWidget):
         # Playlist -> Folder
         self.playlists = {}
 
-        # Song name -> Full path
-        self.song_paths = {}
+        # Playlist Engine
+        self.current_playlist = []
+        self.current_index = -1
 
         # =========================
         # Window
@@ -161,10 +162,11 @@ class MainWindow(QWidget):
 
     def load_playlist(self, item):
         self.song_list.clear()
-        self.song_paths.clear()
+
+        self.current_playlist.clear()
+        self.current_index = -1
 
         playlist_name = item.text()
-
         folder = self.playlists[playlist_name]
 
         for file_name in sorted(os.listdir(folder)):
@@ -172,19 +174,69 @@ class MainWindow(QWidget):
 
                 full_path = os.path.join(folder, file_name)
 
-                self.song_paths[file_name] = full_path
+                self.current_playlist.append({
+                    "title": file_name,
+                    "path": full_path
+                })
 
                 self.song_list.addItem(file_name)
 
     def play_song(self, item):
-        file_name = item.text()
+        title = item.text()
 
-        file_path = self.song_paths[file_name]
+        for index, song in enumerate(self.current_playlist):
+            if song["title"] == title:
 
-        self.player.load(file_path)
+                self.current_index = index
+
+                self.player.load(song["path"])
+                self.player.play()
+
+                self.now_playing.setText(
+                    f"Now Playing: {song['title']}"
+                )
+
+                break
+
+    def play_next(self):
+        if not self.current_playlist:
+            return
+
+        self.current_index += 1
+
+        if self.current_index >= len(self.current_playlist):
+            self.current_index = 0
+
+        song = self.current_playlist[self.current_index]
+
+        self.player.load(song["path"])
         self.player.play()
 
-        self.now_playing.setText(f"Now Playing: {file_name}")
+        self.song_list.setCurrentRow(self.current_index)
+
+        self.now_playing.setText(
+            f"Now Playing: {song['title']}"
+        )
+
+    def play_previous(self):
+        if not self.current_playlist:
+            return
+
+        self.current_index -= 1
+
+        if self.current_index < 0:
+            self.current_index = len(self.current_playlist) - 1
+
+        song = self.current_playlist[self.current_index]
+
+        self.player.load(song["path"])
+        self.player.play()
+
+        self.song_list.setCurrentRow(self.current_index)
+
+        self.now_playing.setText(
+            f"Now Playing: {song['title']}"
+        )
 
     def format_time(self, ms):
         seconds = ms // 1000
