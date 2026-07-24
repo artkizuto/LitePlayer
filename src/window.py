@@ -3,6 +3,7 @@ import os
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QPushButton,
     QLabel,
     QFileDialog,
@@ -28,9 +29,7 @@ class MainWindow(QWidget):
         # Window
         # =========================
         self.setWindowTitle("LitePlayer")
-        self.resize(420, 600)
-
-        layout = QVBoxLayout()
+        self.resize(700, 500)
 
         # =========================
         # Title
@@ -65,22 +64,45 @@ class MainWindow(QWidget):
         # =========================
         # Layout
         # =========================
-        layout.addWidget(title)
 
-        layout.addWidget(self.add_playlist_btn)
+        # Main Layout
+        main_layout = QVBoxLayout()
 
-        layout.addWidget(QLabel("Playlists"))
-        layout.addWidget(self.playlist_list)
+        # ---------- Top ----------
+        top_layout = QHBoxLayout()
 
-        layout.addWidget(QLabel("Songs"))
-        layout.addWidget(self.song_list)
+        top_layout.addWidget(title)
+        top_layout.addStretch()
+        top_layout.addWidget(self.add_playlist_btn)
 
-        layout.addStretch()
+        # ---------- Center ----------
+        center_layout = QHBoxLayout()
 
-        layout.addWidget(self.play_btn)
-        layout.addWidget(self.pause_btn)
+        # Left Panel
+        left_layout = QVBoxLayout()
+        left_layout.addWidget(QLabel("Playlists"))
+        left_layout.addWidget(self.playlist_list)
 
-        self.setLayout(layout)
+        # Right Panel
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(QLabel("Songs"))
+        right_layout.addWidget(self.song_list)
+
+        center_layout.addLayout(left_layout)
+        center_layout.addLayout(right_layout)
+
+        # ---------- Bottom ----------
+        bottom_layout = QVBoxLayout()
+        bottom_layout.addWidget(self.play_btn)
+        bottom_layout.addWidget(self.pause_btn)
+
+        # Assemble
+        main_layout.addLayout(top_layout)
+        main_layout.addLayout(center_layout)
+        main_layout.addStretch()
+        main_layout.addLayout(bottom_layout)
+
+        self.setLayout(main_layout)
 
     def add_playlist(self):
         folder = QFileDialog.getExistingDirectory(
