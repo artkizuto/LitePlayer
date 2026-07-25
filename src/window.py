@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QSlider,
     QComboBox,
+    QFrame,
 )
 
 from player import AudioPlayer
@@ -51,7 +52,7 @@ class MainWindow(QWidget):
         self.setWindowTitle("LitePlayer")
         self.resize(700, 500)
 
-        # Background Manager (Mới: Dùng BackgroundWidget & Đẩy xuống đáy)
+        # Background Manager
         self.bg = BackgroundWidget(self.settings)
         self.bg.setParent(self)
         self.bg.lower()
@@ -120,9 +121,31 @@ class MainWindow(QWidget):
         self.shuffle_btn = QPushButton("🔀")
         self.loop_btn = QPushButton("🔁")
 
-        self.volume = QSlider(Qt.Horizontal)
+        # Vertical Volume Slider
+        self.volume = QSlider(Qt.Vertical)
         self.volume.setRange(0, 100)
         self.volume.setValue(self.settings.get("volume", 50))
+
+        # Volume Button & Popup UI
+        self.volume_btn = QPushButton("🔊")
+
+        self.volume_popup = QFrame(self)
+        self.volume_popup.hide()
+        self.volume_popup.setFrameShape(QFrame.NoFrame)
+        self.volume_popup.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 1px solid lightgray;
+                border-radius: 10px;
+            }
+        """)
+
+        popup_layout = QVBoxLayout(self.volume_popup)
+        popup_layout.setContentsMargins(10, 10, 10, 10)
+        popup_layout.addWidget(self.volume)
+
+        # Cập nhật icon âm lượng ban đầu
+        self.update_volume_icon(self.volume.value())
 
         # Set initial button styles based on settings
         if self.shuffle:
@@ -164,6 +187,7 @@ class MainWindow(QWidget):
         self.progress.sliderReleased.connect(self.resume_timer)
 
         self.volume.valueChanged.connect(self.on_volume_changed)
+        self.volume_btn.clicked.connect(self.toggle_volume_popup)
 
         # =========================
         # Layout UI
@@ -200,7 +224,14 @@ class MainWindow(QWidget):
         self.song_label = QLabel("Songs (0)")
         right_layout.addWidget(self.song_label)
         right_layout.addWidget(self.song_list)
-        right_layout.addWidget(self.now_playing)
+
+        # Song Layout (Song Info + Volume Btn)
+        song_layout = QHBoxLayout()
+        song_layout.addWidget(self.now_playing)
+        song_layout.addStretch()
+        song_layout.addWidget(self.volume_btn)
+
+        right_layout.addLayout(song_layout)
         right_layout.addWidget(self.progress)
         right_layout.addLayout(time_layout)
 
@@ -213,9 +244,6 @@ class MainWindow(QWidget):
         controls.addWidget(self.loop_btn)
 
         right_layout.addLayout(controls)
-
-        right_layout.addWidget(QLabel("Volume"))
-        right_layout.addWidget(self.volume)
 
         center_layout.addWidget(left_panel, 1)
         center_layout.addWidget(right_panel, 2)
@@ -250,6 +278,65 @@ class MainWindow(QWidget):
 
         # Restore saved playlists
         self.restore_playlists()
+
+    # =========================
+    # Methods & Events
+    # =========================
+    def toggle_volume_popup(self):
+        if self.volume_popup.isVisible():
+            self.volume_popup.hide()
+            return
+
+        # ép kích thước
+        self.volume_popup.resize(60, 180)
+
+        button = self.volume_btn
+        pos = button.mapTo(self, button.rect().topLeft())
+
+        x = pos.x()
+        y = pos.y() - self.volume_popup.height() - 8
+
+        self.volume_popup.move(x, y)
+        self.volume_popup.raise_()
+        self.volume_popup.show()
+
+        button = self.volume_btn
+        pos = button.mapTo(self, button.rect().topLeft())
+
+        self.volume_popup.adjustSize()
+
+        x = pos.x()
+        y = pos.y() - self.volume_popup.height() - 8
+
+        self.volume_popup.move(x, y)
+        self.volume_popup.show()
+
+    def mousePressEvent(self, event):
+        if self.volume_popup.isVisible():
+            if (
+                not self.volume_popup.geometry().contains(event.pos())
+                and not self.volume_btn.geometry().contains(event.pos())
+            ):
+                self.volume_popup.hide()
+
+        super().mousePressEvent(event)
+
+    def update_volume_icon(self, value):
+        if value == 0:
+            icon = "🔇"
+        elif value <= 33:
+            icon = "🔈"
+        elif value <= 66:
+            icon = "🔉"
+        else:
+            icon = "🔊"
+        self.volume_btn.setText(icon)
+
+    def on_volume_changed(self, value):
+        if hasattr(self.player, "audio_output"):
+            self.player.audio_output.setVolume(value / 100)
+        self.update_volume_icon(value)
+        self.persist_settings()
 
     def focus_search(self):
         self.search.setFocus()
@@ -308,11 +395,6 @@ class MainWindow(QWidget):
         if file_path:
             self.bg.set_background(file_path)
             self.persist_settings()
-
-    def on_volume_changed(self, value):
-        if hasattr(self.player, "audio_output"):
-            self.player.audio_output.setVolume(value / 100)
-        self.persist_settings()
 
     def add_playlist(self):
         folder = QFileDialog.getExistingDirectory(
