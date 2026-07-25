@@ -1,9 +1,7 @@
 import os
 import random
-import shutil
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QMouseEvent, QPixmap
 from PySide6.QtMultimedia import QMediaPlayer
 
 from PySide6.QtWidgets import (
@@ -14,14 +12,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QFileDialog,
     QListWidget,
-    QProgressBar,
     QSlider,
     QComboBox,
-    QGraphicsOpacityEffect,
 )
 
 from player import AudioPlayer
 from settings import load_settings, save_settings
+from background import BackgroundWidget
+from glass import GlassWidget
 
 
 class MainWindow(QWidget):
@@ -51,20 +49,17 @@ class MainWindow(QWidget):
         self.setWindowTitle("LitePlayer")
         self.resize(700, 500)
 
-        # Background QLabel
-        self.background = QLabel(self)
-        self.background.lower()
+        # Background Manager (Mới: Dùng BackgroundWidget & Đẩy xuống đáy)
+        self.bg = BackgroundWidget(self.settings)
+        self.bg.setParent(self)
+        self.bg.lower()
+        self.bg.resize(self.size())
 
-        self.background_effect = QGraphicsOpacityEffect()
-        
-        # Sliders & Controls (Khởi tạo sớm để gán effect)
+        # Sliders & Controls
         self.opacity = QSlider(Qt.Horizontal)
-        self.opacity.setRange(0, 35)
-        self.opacity.setValue(self.settings.get("background_opacity", 20))
+        self.opacity.setRange(0, 100)
+        self.opacity.setValue(self.settings.get("background_opacity", 30))
         self.opacity.setMaximumWidth(120)
-
-        self.background_effect.setOpacity(self.opacity.value() / 100)
-        self.background.setGraphicsEffect(self.background_effect)
 
         # =========================
         # Title
@@ -131,14 +126,8 @@ class MainWindow(QWidget):
         # =========================
         self.add_playlist_btn.clicked.connect(self.add_playlist)
         self.background_btn.clicked.connect(self.choose_background)
-
-        self.background_mode.currentTextChanged.connect(
-            self.change_background_mode
-        )
-
-        self.opacity.valueChanged.connect(
-            self.change_background_opacity
-        )
+        self.background_mode.currentTextChanged.connect(self.bg.set_mode)
+        self.opacity.valueChanged.connect(self.bg.set_opacity)
 
         self.playlist_list.itemClicked.connect(self.load_playlist)
         self.song_list.itemDoubleClicked.connect(self.play_song)
@@ -162,7 +151,7 @@ class MainWindow(QWidget):
         self.volume.valueChanged.connect(self.on_volume_changed)
 
         # =========================
-        # Layout
+        # Layout UI
         # =========================
         main_layout = QVBoxLayout()
 
@@ -177,16 +166,20 @@ class MainWindow(QWidget):
         top_layout.addWidget(self.background_mode)
         top_layout.addWidget(self.add_playlist_btn)
 
-        # ---------- Center ----------
+        # ---------- Center (Glass Panels) ----------
         center_layout = QHBoxLayout()
 
-        # Left Panel
-        left_layout = QVBoxLayout()
+        # Left Panel (Glass)
+        left_panel = GlassWidget()
+
+        left_layout = QVBoxLayout(left_panel)
         left_layout.addWidget(QLabel("Playlists"))
         left_layout.addWidget(self.playlist_list)
 
-        # Right Panel
-        right_layout = QVBoxLayout()
+        # Right Panel (Glass)
+        right_panel = GlassWidget()
+
+        right_layout = QVBoxLayout(right_panel)
         right_layout.addWidget(QLabel("Songs"))
         right_layout.addWidget(self.song_list)
         right_layout.addWidget(self.now_playing)
@@ -206,14 +199,14 @@ class MainWindow(QWidget):
         right_layout.addWidget(QLabel("Volume"))
         right_layout.addWidget(self.volume)
 
-        center_layout.addLayout(left_layout, 1)
-        center_layout.addLayout(right_layout, 2)
+        center_layout.addWidget(left_panel, 1)
+        center_layout.addWidget(right_panel, 2)
 
         # Assemble
         main_layout.addLayout(top_layout)
         main_layout.addLayout(center_layout)
 
-        version = QLabel("v0.1.4")
+        version = QLabel("v0.2.0")
         version.setStyleSheet("""
             color:gray;
             font-size:10px;
@@ -224,15 +217,21 @@ class MainWindow(QWidget):
             alignment=Qt.AlignRight
         )
 
-        self.setLayout(main_layout)
+        # UI Container Widget
+        ui_widget = QWidget(self)
+        ui_widget.setLayout(main_layout)
+
+        # Root layout cho MainWindow
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.addWidget(ui_widget)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_progress)
         self.timer.start(200)
 
-        # Restore saved playlists & background
+        # Restore saved playlists
         self.restore_playlists()
-        self.update_background()
 
     def restore_playlists(self):
         saved_folders = self.settings.get("playlists", [])
@@ -248,10 +247,18 @@ class MainWindow(QWidget):
         self.settings["shuffle"] = self.shuffle
         self.settings["loop"] = self.loop
         self.settings["playlists"] = list(self.playlists.values())
-        self.settings["background"] = self.settings.get("background", "")
-        self.settings["background_opacity"] = self.opacity.value()
-        self.settings["background_mode"] = self.background_mode.currentText()
         save_settings(self.settings)
+
+    def choose_background(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Background Image",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+        )
+        if file_path:
+            self.bg.set_background(file_path)
+            self.persist_settings()
 
     def on_volume_changed(self, value):
         if hasattr(self.player, "audio_output"):
@@ -414,74 +421,5 @@ class MainWindow(QWidget):
         self.timer.start(200)
 
     def resizeEvent(self, event):
-        self.background.resize(self.size())
-        self.update_background()
+        self.bg.resize(self.size())
         super().resizeEvent(event)
-
-    def choose_background(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Choose Background",
-            "",
-            "Images (*.png *.jpg *.jpeg)"
-        )
-
-        if not file_path:
-            return
-
-        os.makedirs(
-            "data/backgrounds",
-            exist_ok=True
-        )
-
-        extension = os.path.splitext(file_path)[1]
-        destination = os.path.join(
-            "data/backgrounds",
-            "background" + extension
-        )
-
-        shutil.copy2(file_path, destination)
-        self.settings["background"] = destination
-        self.persist_settings()
-        self.update_background()
-
-    def change_background_mode(self, mode):
-        self.settings["background_mode"] = mode
-        self.persist_settings()
-        self.update_background()
-
-    def update_background(self):
-        path = self.settings.get("background", "")
-
-        if not os.path.exists(path):
-            return
-
-        pixmap = QPixmap(path)
-        mode = self.settings.get("background_mode", "Fit")
-        size = self.size()
-
-        if mode == "Fit":
-            scaled = pixmap.scaled(
-                size,
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
-        elif mode == "Fill":
-            scaled = pixmap.scaled(
-                size,
-                Qt.KeepAspectRatioByExpanding,
-                Qt.SmoothTransformation
-            )
-        else:  # Stretch
-            scaled = pixmap.scaled(
-                size,
-                Qt.IgnoreAspectRatio,
-                Qt.SmoothTransformation
-            )
-
-        self.background.setPixmap(scaled)
-
-    def change_background_opacity(self, value):
-        self.background_effect.setOpacity(value / 100)
-        self.settings["background_opacity"] = value
-        self.persist_settings()
