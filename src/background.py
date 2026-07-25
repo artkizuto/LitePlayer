@@ -1,3 +1,6 @@
+import os
+import shutil
+
 from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import (
     QPainter,
@@ -32,13 +35,26 @@ class BackgroundWidget(QWidget):
 
     def load_background(self):
 
+        DATA_DIR = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+            "background"
+        )
+
+        os.makedirs(DATA_DIR, exist_ok=True)
+
         path = self.settings.get(
             "background",
             ""
         )
 
         if path:
-            self.pixmap.load(path)
+            full_path = os.path.join(
+                DATA_DIR,
+                path
+            )
+            if os.path.exists(full_path):
+                self.pixmap.load(full_path)
 
         self.update()
 
@@ -46,7 +62,29 @@ class BackgroundWidget(QWidget):
 
     def set_background(self, path):
 
-        self.settings["background"] = path
+        DATA_DIR = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+            "background"
+        )
+
+        os.makedirs(DATA_DIR, exist_ok=True)
+
+        ext = os.path.splitext(path)[1]
+
+        filename = "background" + ext
+
+        destination = os.path.join(
+            DATA_DIR,
+            filename
+        )
+
+        shutil.copy2(
+            path,
+            destination
+        )
+
+        self.settings["background"] = filename
 
         self.load_background()
 

@@ -1,0 +1,11 @@
+{
+    "volume": 50,
+    "shuffle": true,
+    "loop": true,
+    "playlists": [
+        "D:/My drawing playlist"
+    ],
+    "background": "background.png",
+    "background_opacity": 100,
+    "background_mode": "Fit"
+}

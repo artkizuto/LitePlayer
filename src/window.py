@@ -2,6 +2,7 @@ import os
 import random
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtMultimedia import QMediaPlayer
 
 from PySide6.QtWidgets import (
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QLabel,
+    QLineEdit,
     QFileDialog,
     QListWidget,
     QSlider,
@@ -62,13 +64,24 @@ class MainWindow(QWidget):
         self.opacity.setMaximumWidth(120)
 
         # =========================
-        # Title
+        # Title & Search
         # =========================
         title = QLabel("🎵 LitePlayer")
         title.setStyleSheet("""
             font-size:24px;
             font-weight:bold;
         """)
+
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("🔍 Search...")
+
+        # Ctrl+F Shortcut
+        shortcut_find = QShortcut(QKeySequence("Ctrl+F"), self)
+        shortcut_find.activated.connect(self.focus_search)
+
+        # ESC Shortcut to clear search
+        shortcut_esc = QShortcut(QKeySequence("Esc"), self)
+        shortcut_esc.activated.connect(self.clear_search)
 
         # =========================
         # Widgets
@@ -124,6 +137,8 @@ class MainWindow(QWidget):
         # =========================
         # Signals
         # =========================
+        self.search.textChanged.connect(self.filter_songs)
+
         self.add_playlist_btn.clicked.connect(self.add_playlist)
         self.background_btn.clicked.connect(self.choose_background)
         self.background_mode.currentTextChanged.connect(self.bg.set_mode)
@@ -159,6 +174,7 @@ class MainWindow(QWidget):
         top_layout = QHBoxLayout()
 
         top_layout.addWidget(title)
+        top_layout.addWidget(self.search)
         top_layout.addStretch()
         top_layout.addWidget(QLabel("Opacity"))
         top_layout.addWidget(self.opacity)
@@ -173,14 +189,16 @@ class MainWindow(QWidget):
         left_panel = GlassWidget()
 
         left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(QLabel("Playlists"))
+        self.playlist_label = QLabel("Playlists (0)")
+        left_layout.addWidget(self.playlist_label)
         left_layout.addWidget(self.playlist_list)
 
         # Right Panel (Glass)
         right_panel = GlassWidget()
 
         right_layout = QVBoxLayout(right_panel)
-        right_layout.addWidget(QLabel("Songs"))
+        self.song_label = QLabel("Songs (0)")
+        right_layout.addWidget(self.song_label)
         right_layout.addWidget(self.song_list)
         right_layout.addWidget(self.now_playing)
         right_layout.addWidget(self.progress)
@@ -233,6 +251,33 @@ class MainWindow(QWidget):
         # Restore saved playlists
         self.restore_playlists()
 
+    def focus_search(self):
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def clear_search(self):
+        self.search.clear()
+        self.search.clearFocus()
+
+    def filter_songs(self, text):
+        query = text.lower()
+        self.song_list.clear()
+        count = 0
+
+        for song in self.current_playlist:
+            if query in song["title"].lower():
+                self.song_list.addItem(song["title"])
+                count += 1
+
+        if text:
+            self.song_label.setText(
+                f"Songs ({count}/{len(self.current_playlist)})"
+            )
+        else:
+            self.song_label.setText(
+                f"Songs ({len(self.current_playlist)})"
+            )
+
     def restore_playlists(self):
         saved_folders = self.settings.get("playlists", [])
         for folder in saved_folders:
@@ -241,6 +286,10 @@ class MainWindow(QWidget):
                 if playlist_name not in self.playlists:
                     self.playlists[playlist_name] = folder
                     self.playlist_list.addItem(playlist_name)
+
+        self.playlist_label.setText(
+            f"Playlists ({len(self.playlists)})"
+        )
 
     def persist_settings(self):
         self.settings["volume"] = self.volume.value()
@@ -281,9 +330,15 @@ class MainWindow(QWidget):
 
         self.playlists[playlist_name] = folder
         self.playlist_list.addItem(playlist_name)
+
+        self.playlist_label.setText(
+            f"Playlists ({len(self.playlists)})"
+        )
+
         self.persist_settings()
 
     def load_playlist(self, item):
+        self.search.clear()
         self.song_list.clear()
         self.current_playlist.clear()
         self.current_index = -1
@@ -299,6 +354,10 @@ class MainWindow(QWidget):
                     "path": full_path
                 })
                 self.song_list.addItem(file_name)
+
+        self.song_label.setText(
+            f"Songs ({len(self.current_playlist)})"
+        )
 
     def play_current(self):
         if not self.current_playlist:
