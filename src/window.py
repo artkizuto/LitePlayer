@@ -1,5 +1,6 @@
 import os
 import random
+import subprocess
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -23,6 +24,14 @@ from player import AudioPlayer
 from settings import load_settings, save_settings
 from background import BackgroundWidget
 from glass import GlassWidget
+
+
+def get_git_hash():
+    try:
+        # Lấy 7 ký tự đầu của commit hash mới nhất
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+    except Exception:
+        return "dev"  # Trường hợp không có git hoặc đã đóng gói file .exe
 
 
 class MainWindow(QWidget):
@@ -252,16 +261,18 @@ class MainWindow(QWidget):
         main_layout.addLayout(top_layout)
         main_layout.addLayout(center_layout)
 
-        version = QLabel("v0.2.0")
-        version.setStyleSheet("""
-            color:gray;
-            font-size:10px;
+        # Lấy hash git động cho footer
+        git_hash = get_git_hash()
+        footer = QLabel(f"LitePlayer v0.3.0 ({git_hash}) | Made by Kizuto | Powered by Python + Qt | AI-assisted development")
+
+        footer.setStyleSheet("""
+            color: gray;
+            font-size: 10px;
         """)
 
-        main_layout.addWidget(
-            version,
-            alignment=Qt.AlignRight
-        )
+        footer.setAlignment(Qt.AlignRight)
+
+        main_layout.addWidget(footer)
 
         # UI Container Widget
         ui_widget = QWidget(self)
