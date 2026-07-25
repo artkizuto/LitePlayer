@@ -287,28 +287,20 @@ class MainWindow(QWidget):
             self.volume_popup.hide()
             return
 
-        # ép kích thước
+        # 1. Ép kích thước cố định cho popup
         self.volume_popup.resize(60, 180)
 
+        # 2. Lấy vị trí nút loa
         button = self.volume_btn
         pos = button.mapTo(self, button.rect().topLeft())
 
+        # 3. Tính tọa độ x, y để popup nằm ngay trên nút loa
         x = pos.x()
         y = pos.y() - self.volume_popup.height() - 8
 
+        # 4. Di chuyển, đẩy lên trên cùng và hiển thị
         self.volume_popup.move(x, y)
         self.volume_popup.raise_()
-        self.volume_popup.show()
-
-        button = self.volume_btn
-        pos = button.mapTo(self, button.rect().topLeft())
-
-        self.volume_popup.adjustSize()
-
-        x = pos.x()
-        y = pos.y() - self.volume_popup.height() - 8
-
-        self.volume_popup.move(x, y)
         self.volume_popup.show()
 
     def mousePressEvent(self, event):
@@ -334,7 +326,10 @@ class MainWindow(QWidget):
 
     def on_volume_changed(self, value):
         if hasattr(self.player, "audio_output"):
-            self.player.audio_output.setVolume(value / 100)
+            # Biến đổi value (0->100) theo đường cong mũ x^2 cho hợp tai người nghe
+            real_volume = (value / 100) ** 2
+            self.player.audio_output.setVolume(real_volume)
+
         self.update_volume_icon(value)
         self.persist_settings()
 
@@ -448,8 +443,10 @@ class MainWindow(QWidget):
         song = self.current_playlist[self.current_index]
         self.player.load(song["path"])
 
-        if hasattr(self.player, "set_loop"):
-            self.player.set_loop(self.loop)
+        # Set initial audio volume (Sửa lại công thức mũ luôn)
+        if hasattr(self.player, "audio_output"):
+            init_val = self.volume.value() / 100
+            self.player.audio_output.setVolume(init_val ** 2)
 
         self.player.play()
         self.song_list.setCurrentRow(self.current_index)
