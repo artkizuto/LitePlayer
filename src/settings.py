@@ -7,7 +7,11 @@ DEFAULT = {
     "volume": 50,
     "shuffle": False,
     "loop": False,
-    "playlists": []
+    "playlists": [],
+
+    "background": "",
+
+    "background_opacity": 20,
 }
 
 

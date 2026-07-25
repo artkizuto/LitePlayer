@@ -4,5 +4,7 @@
     "loop": false,
     "playlists": [
         "D:/My drawing playlist"
-    ]
+    ],
+    "background_opacity": 35,
+    "background": "data/backgrounds\\background.png"
 }
