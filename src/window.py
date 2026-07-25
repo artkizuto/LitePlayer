@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QProgressBar,
     QSlider,
+    QComboBox,
     QGraphicsOpacityEffect,
 )
 
@@ -50,20 +51,20 @@ class MainWindow(QWidget):
         self.setWindowTitle("LitePlayer")
         self.resize(700, 500)
 
-        # 3. Background QLabel
+        # Background QLabel
         self.background = QLabel(self)
         self.background.lower()
 
-        self.background.setScaledContents(True)
-
         self.background_effect = QGraphicsOpacityEffect()
-        self.background_effect.setOpacity(
-            self.opacity.value() / 100 if hasattr(self, "opacity") else self.settings.get("background_opacity", 20) / 100
-        )
+        
+        # Sliders & Controls (Khởi tạo sớm để gán effect)
+        self.opacity = QSlider(Qt.Horizontal)
+        self.opacity.setRange(0, 35)
+        self.opacity.setValue(self.settings.get("background_opacity", 20))
+        self.opacity.setMaximumWidth(120)
 
-        self.background.setGraphicsEffect(
-            self.background_effect
-        )
+        self.background_effect.setOpacity(self.opacity.value() / 100)
+        self.background.setGraphicsEffect(self.background_effect)
 
         # =========================
         # Title
@@ -79,6 +80,12 @@ class MainWindow(QWidget):
         # =========================
         self.add_playlist_btn = QPushButton("➕ Add Playlist")
         self.background_btn = QPushButton("🖼 Background")
+
+        self.background_mode = QComboBox()
+        self.background_mode.addItems(["Fit", "Fill", "Stretch"])
+        self.background_mode.setCurrentText(
+            self.settings.get("background_mode", "Fit")
+        )
 
         self.playlist_list = QListWidget()
         self.song_list = QListWidget()
@@ -109,17 +116,6 @@ class MainWindow(QWidget):
         self.volume.setRange(0, 100)
         self.volume.setValue(self.settings.get("volume", 50))
 
-        self.opacity = QSlider(Qt.Horizontal)
-        self.opacity.setRange(0, 35)
-        self.opacity.setValue(
-            self.settings.get("background_opacity", 20)
-        )
-
-        # Cập nhật lại opacity effect sau khi slider self.opacity khởi tạo
-        self.background_effect.setOpacity(
-            self.opacity.value() / 100
-        )
-
         # Set initial button styles based on settings
         if self.shuffle:
             self.shuffle_btn.setStyleSheet("background:#66ccff;")
@@ -134,9 +130,10 @@ class MainWindow(QWidget):
         # Signals
         # =========================
         self.add_playlist_btn.clicked.connect(self.add_playlist)
+        self.background_btn.clicked.connect(self.choose_background)
 
-        self.background_btn.clicked.connect(
-            self.choose_background
+        self.background_mode.currentTextChanged.connect(
+            self.change_background_mode
         )
 
         self.opacity.valueChanged.connect(
@@ -144,7 +141,6 @@ class MainWindow(QWidget):
         )
 
         self.playlist_list.itemClicked.connect(self.load_playlist)
-
         self.song_list.itemDoubleClicked.connect(self.play_song)
 
         self.play_btn.clicked.connect(self.player.play)
@@ -168,7 +164,6 @@ class MainWindow(QWidget):
         # =========================
         # Layout
         # =========================
-
         main_layout = QVBoxLayout()
 
         # ---------- Top ----------
@@ -176,7 +171,10 @@ class MainWindow(QWidget):
 
         top_layout.addWidget(title)
         top_layout.addStretch()
+        top_layout.addWidget(QLabel("Opacity"))
+        top_layout.addWidget(self.opacity)
         top_layout.addWidget(self.background_btn)
+        top_layout.addWidget(self.background_mode)
         top_layout.addWidget(self.add_playlist_btn)
 
         # ---------- Center ----------
@@ -184,18 +182,14 @@ class MainWindow(QWidget):
 
         # Left Panel
         left_layout = QVBoxLayout()
-
         left_layout.addWidget(QLabel("Playlists"))
         left_layout.addWidget(self.playlist_list)
 
         # Right Panel
         right_layout = QVBoxLayout()
-
         right_layout.addWidget(QLabel("Songs"))
         right_layout.addWidget(self.song_list)
-
         right_layout.addWidget(self.now_playing)
-
         right_layout.addWidget(self.progress)
         right_layout.addLayout(time_layout)
 
@@ -212,14 +206,6 @@ class MainWindow(QWidget):
         right_layout.addWidget(QLabel("Volume"))
         right_layout.addWidget(self.volume)
 
-        right_layout.addWidget(
-            QLabel("Background Opacity")
-        )
-
-        right_layout.addWidget(
-            self.opacity
-        )
-
         center_layout.addLayout(left_layout, 1)
         center_layout.addLayout(right_layout, 2)
 
@@ -227,11 +213,10 @@ class MainWindow(QWidget):
         main_layout.addLayout(top_layout)
         main_layout.addLayout(center_layout)
 
-        version = QLabel("v0.1.0")
-
+        version = QLabel("v0.1.4")
         version.setStyleSheet("""
-        color:gray;
-        font-size:10px;
+            color:gray;
+            font-size:10px;
         """)
 
         main_layout.addWidget(
@@ -242,15 +227,12 @@ class MainWindow(QWidget):
         self.setLayout(main_layout)
 
         self.timer = QTimer()
-
         self.timer.timeout.connect(self.update_progress)
-
         self.timer.start(200)
 
-        # Restore saved playlists
+        # Restore saved playlists & background
         self.restore_playlists()
-
-        self.load_background()
+        self.update_background()
 
     def restore_playlists(self):
         saved_folders = self.settings.get("playlists", [])
@@ -266,13 +248,9 @@ class MainWindow(QWidget):
         self.settings["shuffle"] = self.shuffle
         self.settings["loop"] = self.loop
         self.settings["playlists"] = list(self.playlists.values())
-        self.settings["background"] = self.settings.get(
-            "background",
-            ""
-        )
-        self.settings["background_opacity"] = (
-            self.opacity.value()
-        )
+        self.settings["background"] = self.settings.get("background", "")
+        self.settings["background_opacity"] = self.opacity.value()
+        self.settings["background_mode"] = self.background_mode.currentText()
         save_settings(self.settings)
 
     def on_volume_changed(self, value):
@@ -295,14 +273,11 @@ class MainWindow(QWidget):
             return
 
         self.playlists[playlist_name] = folder
-
         self.playlist_list.addItem(playlist_name)
-
         self.persist_settings()
 
     def load_playlist(self, item):
         self.song_list.clear()
-
         self.current_playlist.clear()
         self.current_index = -1
 
@@ -311,14 +286,11 @@ class MainWindow(QWidget):
 
         for file_name in sorted(os.listdir(folder)):
             if file_name.lower().endswith((".mp3", ".wav", ".flac")):
-
                 full_path = os.path.join(folder, file_name)
-
                 self.current_playlist.append({
                     "title": file_name,
                     "path": full_path
                 })
-
                 self.song_list.addItem(file_name)
 
     def play_current(self):
@@ -326,24 +298,17 @@ class MainWindow(QWidget):
             return
 
         song = self.current_playlist[self.current_index]
-
         self.player.load(song["path"])
-        
-        # Áp dụng loop cho player nếu hàm set_loop có trong player
+
         if hasattr(self.player, "set_loop"):
             self.player.set_loop(self.loop)
 
         self.player.play()
-
         self.song_list.setCurrentRow(self.current_index)
-
-        self.now_playing.setText(
-            f"Now Playing: {song['title']}"
-        )
+        self.now_playing.setText(f"Now Playing: {song['title']}")
 
     def play_song(self, item):
         title = item.text()
-
         for index, song in enumerate(self.current_playlist):
             if song["title"] == title:
                 self.current_index = index
@@ -354,7 +319,6 @@ class MainWindow(QWidget):
         if not self.current_playlist:
             return
 
-        # Nếu tự động hết bài + đang bật Loop -> Phát lại đúng bài đó
         if is_auto and self.loop:
             self.play_current()
             return
@@ -366,7 +330,6 @@ class MainWindow(QWidget):
             )
         else:
             self.current_index += 1
-
             if self.current_index >= len(self.current_playlist):
                 if self.loop:
                     self.current_index = 0
@@ -381,9 +344,7 @@ class MainWindow(QWidget):
             return
 
         self.current_index -= 1
-
         if self.current_index < 0:
-
             if self.loop:
                 self.current_index = len(self.current_playlist) - 1
             else:
@@ -394,23 +355,19 @@ class MainWindow(QWidget):
 
     def toggle_shuffle(self):
         self.shuffle = not self.shuffle
-
         if self.shuffle:
             self.shuffle_btn.setStyleSheet("background:#66ccff;")
         else:
             self.shuffle_btn.setStyleSheet("")
-
         self.persist_settings()
 
     def toggle_loop(self):
         self.loop = not self.loop
-
         if self.loop:
             self.loop_btn.setStyleSheet("background:#66cc66;")
         else:
             self.loop_btn.setStyleSheet("")
 
-        # Cập nhật loop vào player
         if hasattr(self.player, "set_loop"):
             self.player.set_loop(self.loop)
 
@@ -424,38 +381,30 @@ class MainWindow(QWidget):
 
     def format_time(self, ms):
         seconds = ms // 1000
-
         minutes = seconds // 60
-
         seconds %= 60
-
         return f"{minutes:02}:{seconds:02}"
 
     def update_progress(self):
         duration = self.player.duration()
-
         if duration <= 0:
             return
 
         position = self.player.position()
-
         value = int(position / duration * 1000)
 
         if not self.progress.isSliderDown():
             self.progress.setValue(value)
 
         self.current_time.setText(self.format_time(position))
-
         self.total_time.setText(self.format_time(duration))
 
     def seek(self, value):
         duration = self.player.duration()
-
         if duration <= 0:
             return
 
         position = duration * value // 1000
-
         self.player.set_position(position)
 
     def pause_timer(self):
@@ -465,13 +414,11 @@ class MainWindow(QWidget):
         self.timer.start(200)
 
     def resizeEvent(self, event):
-
         self.background.resize(self.size())
-
+        self.update_background()
         super().resizeEvent(event)
 
     def choose_background(self):
-
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Choose Background",
@@ -488,48 +435,53 @@ class MainWindow(QWidget):
         )
 
         extension = os.path.splitext(file_path)[1]
-
         destination = os.path.join(
             "data/backgrounds",
             "background" + extension
         )
 
-        shutil.copy2(
-            file_path,
-            destination
-        )
-
+        shutil.copy2(file_path, destination)
         self.settings["background"] = destination
-
         self.persist_settings()
+        self.update_background()
 
-        self.load_background()
+    def change_background_mode(self, mode):
+        self.settings["background_mode"] = mode
+        self.persist_settings()
+        self.update_background()
 
-    def load_background(self):
-
-        path = self.settings.get(
-            "background",
-            ""
-        )
+    def update_background(self):
+        path = self.settings.get("background", "")
 
         if not os.path.exists(path):
             return
 
         pixmap = QPixmap(path)
+        mode = self.settings.get("background_mode", "Fit")
+        size = self.size()
 
-        self.background.setPixmap(pixmap)
+        if mode == "Fit":
+            scaled = pixmap.scaled(
+                size,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+        elif mode == "Fill":
+            scaled = pixmap.scaled(
+                size,
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation
+            )
+        else:  # Stretch
+            scaled = pixmap.scaled(
+                size,
+                Qt.IgnoreAspectRatio,
+                Qt.SmoothTransformation
+            )
 
-    def change_background_opacity(
-        self,
-        value
-    ):
+        self.background.setPixmap(scaled)
 
-        self.background_effect.setOpacity(
-            value / 100
-        )
-
-        self.settings[
-            "background_opacity"
-        ] = value
-
+    def change_background_opacity(self, value):
+        self.background_effect.setOpacity(value / 100)
+        self.settings["background_opacity"] = value
         self.persist_settings()

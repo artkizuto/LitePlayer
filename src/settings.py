@@ -8,10 +8,9 @@ DEFAULT = {
     "shuffle": False,
     "loop": False,
     "playlists": [],
-
     "background": "",
-
     "background_opacity": 20,
+    "background_mode": "Fit"
 }
 
 
