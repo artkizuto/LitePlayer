@@ -12,7 +12,8 @@ DEFAULT = {
     "background_file": "",
     "background_color": "#808080",
     "background_opacity": 20,
-    "background_mode": "Fit"
+    "background_mode": "Fit",
+    "developer_unlocked": False
 }
 
 
@@ -44,3 +45,13 @@ def save_settings(settings):
             json.dump(settings, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"Error saving settings: {e}")
+
+
+def is_developer_unlocked():
+    return load_settings().get("developer_unlocked", False)
+
+
+def set_developer_unlocked(value: bool):
+    settings = load_settings()
+    settings["developer_unlocked"] = value
+    save_settings(settings)
