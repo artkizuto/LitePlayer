@@ -8,20 +8,34 @@ DEFAULT = {
     "shuffle": False,
     "loop": False,
     "playlists": [],
-    "background": "",
+    "background_type": "app_default",
+    "background_file": "",
+    "background_color": "#808080",
     "background_opacity": 20,
     "background_mode": "Fit"
 }
 
 
 def load_settings():
+    # Start with a copy of the default settings
+    settings = DEFAULT.copy()
+    
     if not os.path.exists(FILE):
-        return DEFAULT
+        return settings
+        
     try:
         with open(FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            user_settings = json.load(f)
+            
+        # Merge loaded settings with defaults. 
+        # Missing keys in the JSON will automatically fall back to DEFAULT.
+        for key in DEFAULT:
+            if key in user_settings:
+                settings[key] = user_settings[key]
+                
+        return settings
     except Exception:
-        return DEFAULT
+        return settings
 
 
 def save_settings(settings):

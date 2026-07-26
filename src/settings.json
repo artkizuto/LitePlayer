@@ -1,0 +1,13 @@
+{
+    "volume": 48,
+    "shuffle": true,
+    "loop": true,
+    "playlists": [
+        "D:/My drawing playlist"
+    ],
+    "background_type": "app_default",
+    "background_file": "",
+    "background_color": "#3c56e8",
+    "background_opacity": 100,
+    "background_mode": "Fill"
+}

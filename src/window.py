@@ -3,7 +3,7 @@ import random
 import subprocess
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence, QAction
 from PySide6.QtMultimedia import QMediaPlayer
 
 from PySide6.QtWidgets import (
@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QSlider,
     QComboBox,
     QFrame,
+    QMenu,
+    QColorDialog,
 )
 
 from player import AudioPlayer
@@ -68,6 +70,7 @@ class MainWindow(QWidget):
         self.bg.resize(self.size())
 
         # Sliders & Controls
+        self.opacity_label = QLabel("Opacity")
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(0, 100)
         self.opacity.setValue(self.settings.get("background_opacity", 30))
@@ -98,6 +101,23 @@ class MainWindow(QWidget):
         # =========================
         self.add_playlist_btn = QPushButton("➕ Add Playlist")
         self.background_btn = QPushButton("🖼 Background")
+
+        # Setup Background Menu
+        self.bg_menu = QMenu(self)
+        
+        action_default = QAction("No Background", self)
+        action_default.triggered.connect(self.set_bg_default)
+        self.bg_menu.addAction(action_default)
+        
+        action_solid = QAction("Solid Color", self)
+        action_solid.triggered.connect(self.set_bg_solid)
+        self.bg_menu.addAction(action_solid)
+        
+        action_upload = QAction("Upload Image", self)
+        action_upload.triggered.connect(self.choose_background)
+        self.bg_menu.addAction(action_upload)
+        
+        self.background_btn.setMenu(self.bg_menu)
 
         self.background_mode = QComboBox()
         self.background_mode.addItems(["Fit", "Fill", "Stretch"])
@@ -172,7 +192,6 @@ class MainWindow(QWidget):
         self.search.textChanged.connect(self.filter_songs)
 
         self.add_playlist_btn.clicked.connect(self.add_playlist)
-        self.background_btn.clicked.connect(self.choose_background)
         self.background_mode.currentTextChanged.connect(self.bg.set_mode)
         self.opacity.valueChanged.connect(self.bg.set_opacity)
 
@@ -209,7 +228,7 @@ class MainWindow(QWidget):
         top_layout.addWidget(title)
         top_layout.addWidget(self.search)
         top_layout.addStretch()
-        top_layout.addWidget(QLabel("Opacity"))
+        top_layout.addWidget(self.opacity_label)
         top_layout.addWidget(self.opacity)
         top_layout.addWidget(self.background_btn)
         top_layout.addWidget(self.background_mode)
@@ -263,7 +282,7 @@ class MainWindow(QWidget):
 
         # Lấy hash git động cho footer
         git_hash = get_git_hash()
-        footer = QLabel(f"LitePlayer v0.3.0 ({git_hash}) | Made by Kizuto | Powered by Python + Qt | AI-assisted development")
+        footer = QLabel(f"LitePlayer v0.4.0 ({git_hash}) | Made by Kizuto | Powered by Python + Qt | AI-assisted development")
 
         footer.setStyleSheet("""
             color: gray;
@@ -287,12 +306,49 @@ class MainWindow(QWidget):
         self.timer.timeout.connect(self.update_progress)
         self.timer.start(200)
 
-        # Restore saved playlists
+        # Restore saved playlists and update initial background UI
         self.restore_playlists()
+        self.update_background_ui()
 
     # =========================
     # Methods & Events
     # =========================
+    
+    def set_bg_default(self):
+        self.bg.set_default()
+        self.update_background_ui()
+        self.persist_settings()
+
+    def set_bg_solid(self):
+        color = QColorDialog.getColor(parent=self)
+        if color.isValid():
+            self.bg.set_color(color)
+            self.update_background_ui()
+            self.persist_settings()
+
+    def choose_background(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Background Image",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+        )
+        if file_path:
+            self.bg.set_background(file_path)
+            self.update_background_ui()
+            self.persist_settings()
+
+    def update_background_ui(self):
+        bg_type = self.settings.get("background_type", "app_default")
+        if bg_type == "image":
+            self.opacity_label.show()
+            self.opacity.show()
+            self.background_mode.show()
+        else:
+            self.opacity_label.hide()
+            self.opacity.hide()
+            self.background_mode.hide()
+
     def toggle_volume_popup(self):
         if self.volume_popup.isVisible():
             self.volume_popup.hide()
@@ -390,17 +446,6 @@ class MainWindow(QWidget):
         self.settings["loop"] = self.loop
         self.settings["playlists"] = list(self.playlists.values())
         save_settings(self.settings)
-
-    def choose_background(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Background Image",
-            "",
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
-        )
-        if file_path:
-            self.bg.set_background(file_path)
-            self.persist_settings()
 
     def add_playlist(self):
         folder = QFileDialog.getExistingDirectory(
