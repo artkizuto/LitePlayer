@@ -31,7 +31,7 @@ from glass import GlassWidget
 # =========================
 # COMMIT HASH
 # =========================
-MANUAL_GIT_HASH = "3a1d496" 
+MANUAL_GIT_HASH = "db4f198" # Hardcode the git hash here for simplicity
 
 def get_git_hash():
     # Trả về thẳng chuỗi hardcode, không cần try/except dài dòng
