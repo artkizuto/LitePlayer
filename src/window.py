@@ -1,6 +1,6 @@
 import os
 import random
-import subprocess
+# Đã dọn dẹp import subprocess đi cho nhẹ nợ sếp nhé =))
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence, QAction
@@ -28,12 +28,14 @@ from background import BackgroundWidget
 from glass import GlassWidget
 
 
+# =========================
+# COMMIT HASH
+# =========================
+MANUAL_GIT_HASH = "3a1d496" 
+
 def get_git_hash():
-    try:
-        # Lấy 7 ký tự đầu của commit hash mới nhất
-        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
-    except Exception:
-        return "dev"  # Trường hợp không có git hoặc đã đóng gói file .exe
+    # Trả về thẳng chuỗi hardcode, không cần try/except dài dòng
+    return MANUAL_GIT_HASH
 
 
 class MainWindow(QWidget):
@@ -280,9 +282,9 @@ class MainWindow(QWidget):
         main_layout.addLayout(top_layout)
         main_layout.addLayout(center_layout)
 
-        # Lấy hash git động cho footer
+        # Lấy hash git thủ công cho footer
         git_hash = get_git_hash()
-        footer = QLabel(f"LitePlayer v0.4.0 ({git_hash}) | Made by Kizuto | Powered by Python + Qt | AI-assisted development")
+        footer = QLabel(f"LitePlayer v0.4.0 (git {git_hash}) | Made by Kizuto | Powered by Python + Qt | AI-assisted development")
 
         footer.setStyleSheet("""
             color: gray;
