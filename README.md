@@ -10,11 +10,12 @@ That's it.
 
 ## Features
 
-- Open Folder
-- Playlist
-- Shuffle
-- Repeat
-- Very low RAM usage
+- **Open Folder & Playlist:** Quickly load local folders and manage your music playlist.
+- **Background Customization:** Customize the background to set the right chill vibe.
+- **Search Bar:** Find your favorite tracks in a split second.
+- **Volume Slider:** Smooth and precise volume control.
+- **Shuffle & Repeat:** Randomize or loop your tracks effortlessly.
+- **Very low RAM usage:** Extremely lightweight, no more Chrome-level RAM-eating monsters.
 
 ## Contributing
 
