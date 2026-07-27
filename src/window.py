@@ -49,7 +49,7 @@ class ClickableLabel(QLabel):
 # =========================
 # COMMIT HASH
 # =========================
-MANUAL_GIT_HASH = "1de0ce8"
+MANUAL_GIT_HASH = "018cd07"
 
 
 def get_git_hash():

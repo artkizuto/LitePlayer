@@ -49,7 +49,7 @@ class SplashScreen(QWidget):
             font-size:12px;
         """)
 
-        version = QLabel("v0.4.1")
+        version = QLabel("v0.4.5")
         version.setAlignment(Qt.AlignCenter)
 
         version.setStyleSheet("""
