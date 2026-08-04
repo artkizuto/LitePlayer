@@ -1,24 +1,32 @@
-# LitePlayer
+# 🎵 LITEPlayer
 
-A lightweight music player made because Chrome kept eating my RAM while I was drawing manga.
+> A lightweight local music player made because Chrome kept eating my RAM while I was drawing manga.
 
-## Why?
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)]()
 
-I just wanted to play my local MP3 files without opening YouTube.
+## ❓ Why?
 
-That's it.
+I just wanted to play my local MP3 files while drawing without opening YouTube or heavy browser tabs. That's it. 
 
-## Features
+* **Chrome/Spotify:** ~500MB - 1GB RAM 💀
+* **LITEPlayer:** ~20MB - 50MB RAM ⚡ (Saved my 4GB RAM machine!)
 
-- **Open Folder & Playlist:** Quickly load local folders and manage your music playlist.
-- **Background Customization:** Customize the background to set the right chill vibe.
-- **Search Bar:** Find your favorite tracks in a split second.
-- **Volume Slider:** Smooth and precise volume control.
-- **Shuffle & Repeat:** Randomize or loop your tracks effortlessly.
-- **Very low RAM usage:** Extremely lightweight, no more Chrome-level RAM-eating monsters.
+---
 
-## Contributing
+## ✨ Features
 
-If you have ideas, feel free to fork the project or open a Pull Request.
+* 📁 **Open Folder & Playlist:** Quickly load local folders and manage your music playlist.
+* 🖼️ **Background Customization:** Customize the background to set the right chill vibe.
+* 🔍 **Search Bar:** Find your favorite tracks in a split second.
+* 🎚️ **Volume Slider:** Smooth and precise volume control.
+* 🔁 **Shuffle & Repeat:** Randomize or loop your tracks effortlessly.
+* 🚀 **Ultra-Low RAM Usage:** Extremely lightweight, no more Chrome-level RAM-eating monsters.
 
-Let's make it better together.
+---
+
+## 🤝 Contributing
+
+If you have ideas, feel free to fork the project or open a Pull Request. 
+Let's make it better together!
